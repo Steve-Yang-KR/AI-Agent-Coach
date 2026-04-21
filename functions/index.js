@@ -1,33 +1,44 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
+const OpenAI = require("openai");
+const fs = require("fs");
 
 admin.initializeApp();
 
-// 🔥 여기 넣기 (👇 이 위치)
-function analyzeFrame(framePath) {
-  const random = Math.random();
+// 🔥 OpenAI 설정
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
 
-  if (random < 0.3) {
-    return {
-      today_training: "Improve balance (15 min)",
-      message: "Your posture seems unstable"
-    };
-  }
+// 🔥 AI 분석 함수 (👉 여기 넣기)
+async function analyzeWithAI(imagePath) {
+  const base64 = fs.readFileSync(imagePath, "base64");
 
-  if (random < 0.6) {
-    return {
-      today_training: "Dribbling drills (20 min)",
-      message: "Good movement but improve control"
-    };
-  }
+  const res = await client.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "Analyze soccer posture" },
+          {
+            type: "image_url",
+            image_url: {
+              url: `data:image/jpeg;base64,${base64}`
+            }
+          }
+        ]
+      }
+    ]
+  });
 
   return {
-    today_training: "Sprint + agility (15 min)",
-    message: "Nice speed, work on direction change"
+    today_training: "AI generated training",
+    message: res.choices[0].message.content
   };
 }
 
-// 🔥 Firebase Trigger
+// 🔥 Firestore 트리거
 exports.analyzeVideo = functions.firestore
   .document("videos/{videoId}")
   .onCreate(async (snap) => {
@@ -35,8 +46,11 @@ exports.analyzeVideo = functions.firestore
     const data = snap.data();
     const userId = data.player_id;
 
-    // 👉 AI 분석 실행
-    const feedback = analyzeFrame();
+    // 👉 지금은 임시 이미지 경로 (프레임 추출 후 연결)
+    const imagePath = "/tmp/frame.jpg";
+
+    // 🔥 AI 분석 실행
+    const feedback = await analyzeWithAI(imagePath);
 
     // 👉 결과 저장
     await admin.firestore()
