@@ -6,23 +6,29 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword
 } from "firebase/auth";
+import { useRouter } from "next/navigation"; // 🔥 추가
 
 export default function Home() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const router = useRouter(); // 🔥 추가
+
   // ✅ 로그인
   const login = async () => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
+
       alert("Logged in!");
+
+      router.push("/dashboard"); // 🔥 핵심
     } catch (error) {
       console.error(error);
       alert(error.message);
     }
   };
 
-  // ✅ 회원가입 (🔥 추가)
+  // ✅ 회원가입
   const signup = async () => {
     try {
       await createUserWithEmailAndPassword(auth, email, password);
@@ -51,7 +57,7 @@ export default function Home() {
       <br /><br />
 
       <button onClick={login}>Login</button>
-      <button onClick={signup}>Sign Up</button> {/* 🔥 추가 */}
+      <button onClick={signup}>Sign Up</button>
     </div>
   );
 }
