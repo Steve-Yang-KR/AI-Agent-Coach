@@ -12,6 +12,7 @@ export default function Dashboard() {
       const snap = await getDoc(doc(db, "players", "player1"));
       setPlayer(snap.data());
     };
+
     fetch();
   }, []);
 
@@ -19,13 +20,13 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h1>AI Coach</h1>
+      <h1>AI Coach Dashboard</h1>
 
       <h3>Today's Training</h3>
-      <p>{player.intention?.today_training}</p>
+      <p>{player.intention?.today_training || "No training yet"}</p>
 
       <h3>Message</h3>
-      <p>{player.intention?.message}</p>
+      <p>{player.intention?.message || "No message"}</p>
     </div>
   );
 }
