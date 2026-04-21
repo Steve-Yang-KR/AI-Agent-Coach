@@ -1,64 +1,94 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const OpenAI = require("openai");
+const axios = require("axios");
 const fs = require("fs");
+const path = require("path");
+const ffmpeg = require("fluent-ffmpeg");
+const ffmpegPath = require("ffmpeg-static");
 
 admin.initializeApp();
+ffmpeg.setFfmpegPath(ffmpegPath);
 
-// 🔥 OpenAI 설정
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
-
-// 🔥 AI 분석 함수 (👉 여기 넣기)
-async function analyzeWithAI(imagePath) {
-  const base64 = fs.readFileSync(imagePath, "base64");
-
-  const res = await client.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      {
-        role: "user",
-        content: [
-          { type: "text", text: "Analyze soccer posture" },
-          {
-            type: "image_url",
-            image_url: {
-              url: `data:image/jpeg;base64,${base64}`
-            }
-          }
-        ]
-      }
-    ]
-  });
-
-  return {
-    today_training: "AI generated training",
-    message: res.choices[0].message.content
-  };
-}
-
-// 🔥 Firestore 트리거
+// 🔥 메인 트리거
 exports.analyzeVideo = functions.firestore
   .document("videos/{videoId}")
   .onCreate(async (snap) => {
 
-    const data = snap.data();
-    const userId = data.player_id;
+    try {
+      const data = snap.data();
+      const userId = data.player_id;
+      const videoUrl = data.video_url;
 
-    // 👉 지금은 임시 이미지 경로 (프레임 추출 후 연결)
-    const imagePath = "/tmp/frame.jpg";
+      console.log("📥 Video received:", videoUrl);
 
-    // 🔥 AI 분석 실행
-    const feedback = await analyzeWithAI(imagePath);
+      const tempVideo = `/tmp/video.mp4`;
+      const framePath = `/tmp/frame.jpg`;
 
-    // 👉 결과 저장
-    await admin.firestore()
-      .collection("players")
-      .doc(userId)
-      .set({
-        intention: feedback
-      }, { merge: true });
+      // ✅ 1. 영상 다운로드
+      const response = await axios({
+        url: videoUrl,
+        method: "GET",
+        responseType: "arraybuffer"
+      });
 
-    return null;
+      fs.writeFileSync(tempVideo, response.data);
+
+      console.log("✅ Video downloaded");
+
+      // ✅ 2. 프레임 추출
+      await new Promise((resolve, reject) => {
+        ffmpeg(tempVideo)
+          .screenshots({
+            timestamps: ["50%"],
+            filename: "frame.jpg",
+            folder: "/tmp"
+          })
+          .on("end", resolve)
+          .on("error", reject);
+      });
+
+      console.log("📸 Frame extracted");
+
+      // ✅ 3. AI 서버 호출 (MediaPipe)
+      const aiResponse = await axios.post(
+        "http://YOUR_AI_SERVER/analyze", // 🔥 여기 수정 필요
+        {
+          video_path: tempVideo
+        }
+      );
+
+      const feedback = aiResponse.data;
+
+      console.log("🤖 AI result:", feedback);
+
+      // ✅ 4. Firestore 업데이트
+      await admin.firestore()
+        .collection("players")
+        .doc(userId)
+        .set({
+          intention: feedback,
+          last_updated: new Date()
+        }, { merge: true });
+
+      // ✅ 5. videos 상태 업데이트
+      await snap.ref.update({
+        analyzed: true,
+        feedback: feedback
+      });
+
+      console.log("✅ Analysis complete");
+
+      return null;
+
+    } catch (error) {
+      console.error("❌ Error:", error);
+
+      // 실패 상태 저장
+      await snap.ref.update({
+        analyzed: false,
+        error: error.message
+      });
+
+      return null;
+    }
   });
