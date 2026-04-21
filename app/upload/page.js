@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { storage } from "/lib/firebase";
+import { storage } from "../../lib/firebase";
 import { ref, uploadBytes } from "firebase/storage";
 
 export default function Upload() {
