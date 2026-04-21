@@ -3,28 +3,36 @@ const admin = require("firebase-admin");
 
 admin.initializeApp();
 
-exports.generateIntention = functions.firestore
-  .document("players/{playerId}")
-  .onUpdate(async (change, context) => {
+exports.analyzeVideo = functions.firestore
+  .document("videos/{videoId}")
+  .onCreate(async (snap, context) => {
 
-    const player = change.after.data();
-    const belief = player.belief || {};
-    const desire = player.desire || {};
+    const data = snap.data();
+    const playerId = data.player_id;
 
-    let intention = {};
+    // 🎯 초간단 AI 분석 (MVP)
+    const feedback = [
+      "Improve your balance",
+      "Good movement",
+      "Bend your knees more"
+    ];
 
-    if (belief.weaknesses?.includes("weak_foot")) {
-      intention.today_training = "Weak foot training";
-    }
+    // ✅ videos 업데이트
+    await snap.ref.update({
+      analyzed: true,
+      feedback
+    });
 
-    if (belief.activity === "low") {
-      intention.message = "Let's train today!";
-    }
-
+    // ✅ players 업데이트 (Dashboard 연결)
     await admin.firestore()
       .collection("players")
-      .doc(context.params.playerId)
-      .update({ intention });
+      .doc(playerId)
+      .update({
+        intention: {
+          today_training: "Balance training + dribbling (20 min)",
+          message: "Focus on balance today!"
+        }
+      });
 
     return null;
   });
