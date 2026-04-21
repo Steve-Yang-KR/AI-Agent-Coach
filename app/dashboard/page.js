@@ -10,7 +10,12 @@ export default function Dashboard() {
   useEffect(() => {
     const fetch = async () => {
       const snap = await getDoc(doc(db, "players", "player1"));
-      setPlayer(snap.data());
+
+      if (snap.exists()) {
+        setPlayer(snap.data());
+      } else {
+        setPlayer({});
+      }
     };
 
     fetch();
