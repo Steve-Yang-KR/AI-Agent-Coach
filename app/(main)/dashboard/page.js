@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
@@ -10,11 +11,25 @@ export default function Dashboard() {
   const router = useRouter();
 
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, "players", "player1"), (docSnap) => {
-      setPlayer(docSnap.data() || {});
+    let unsubscribeFirestore = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        router.push("/");
+        return;
+      }
+
+      const ref = doc(db, "players", user.uid);
+
+      unsubscribeFirestore = onSnapshot(ref, (docSnap) => {
+        setPlayer(docSnap.data() || {});
+      });
     });
 
-    return () => unsub();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeFirestore) unsubscribeFirestore();
+    };
   }, []);
 
   if (!player) return <div>Loading...</div>;
@@ -23,14 +38,10 @@ export default function Dashboard() {
     <div>
       <h1>⚽ AI Coach Dashboard</h1>
 
-      <button onClick={() => router.push("/upload")}>
-        Upload Video
-      </button>
-
       <h3>Today's Training</h3>
       <p>{player.intention?.today_training || "No training yet"}</p>
 
-      <h3>Coach Message</h3>
+      <h3>Message</h3>
       <p>{player.intention?.message || "No message"}</p>
     </div>
   );
