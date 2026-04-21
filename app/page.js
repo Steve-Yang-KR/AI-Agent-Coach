@@ -9,8 +9,13 @@ export default function Home() {
   const [password, setPassword] = useState("");
 
   const login = async () => {
-    await signInWithEmailAndPassword(auth, email, password);
-    alert("Logged in");
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      alert("Logged in!");
+    } catch (error) {
+      console.error(error);
+      alert(error.message);
+    }
   };
 
   return (
@@ -24,3 +29,5 @@ export default function Home() {
     </div>
   );
 }
+
+
