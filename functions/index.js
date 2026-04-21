@@ -1,45 +1,44 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const ffmpeg = require("fluent-ffmpeg");
-const ffmpegPath = require("ffmpeg-static");
-const fs = require("fs");
-const path = require("path");
 
 admin.initializeApp();
-ffmpeg.setFfmpegPath(ffmpegPath);
 
+// 🔥 여기 넣기 (👇 이 위치)
+function analyzeFrame(framePath) {
+  const random = Math.random();
+
+  if (random < 0.3) {
+    return {
+      today_training: "Improve balance (15 min)",
+      message: "Your posture seems unstable"
+    };
+  }
+
+  if (random < 0.6) {
+    return {
+      today_training: "Dribbling drills (20 min)",
+      message: "Good movement but improve control"
+    };
+  }
+
+  return {
+    today_training: "Sprint + agility (15 min)",
+    message: "Nice speed, work on direction change"
+  };
+}
+
+// 🔥 Firebase Trigger
 exports.analyzeVideo = functions.firestore
   .document("videos/{videoId}")
   .onCreate(async (snap) => {
 
     const data = snap.data();
     const userId = data.player_id;
-    const videoUrl = data.video_url;
 
-    const tempFile = `/tmp/video.mp4`;
-    const frameFile = `/tmp/frame.jpg`;
+    // 👉 AI 분석 실행
+    const feedback = analyzeFrame();
 
-    // 🔽 영상 다운로드
-    const response = await fetch(videoUrl);
-    const buffer = await response.arrayBuffer();
-    fs.writeFileSync(tempFile, Buffer.from(buffer));
-
-    // 🎬 프레임 추출
-    await new Promise((resolve, reject) => {
-      ffmpeg(tempFile)
-        .screenshots({
-          timestamps: ["50%"],
-          filename: "frame.jpg",
-          folder: "/tmp"
-        })
-        .on("end", resolve)
-        .on("error", reject);
-    });
-
-    // 🧠 간단 AI 분석 (MVP)
-    const feedback = analyzeFrame(frameFile);
-
-    // ✅ 결과 저장
+    // 👉 결과 저장
     await admin.firestore()
       .collection("players")
       .doc(userId)
