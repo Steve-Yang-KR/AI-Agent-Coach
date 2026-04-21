@@ -1,4 +1,5 @@
 'use client';
+
 import { useEffect, useState } from "react";
 import { db } from "../../lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
@@ -19,7 +20,11 @@ export default function Dashboard() {
   return (
     <div>
       <h1>AI Coach</h1>
+
+      <h3>Today's Training</h3>
       <p>{player.intention?.today_training}</p>
+
+      <h3>Message</h3>
       <p>{player.intention?.message}</p>
     </div>
   );
