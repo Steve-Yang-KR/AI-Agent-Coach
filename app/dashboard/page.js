@@ -2,23 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { db } from "../../lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 
 export default function Dashboard() {
   const [player, setPlayer] = useState(null);
 
   useEffect(() => {
-    const fetch = async () => {
-      const snap = await getDoc(doc(db, "players", "player1"));
+    const unsub = onSnapshot(doc(db, "players", "player1"), (docSnap) => {
+      setPlayer(docSnap.data());
+    });
 
-      if (snap.exists()) {
-        setPlayer(snap.data());
-      } else {
-        setPlayer({});
-      }
-    };
-
-    fetch();
+    return () => unsub();
   }, []);
 
   if (!player) return <div>Loading...</div>;
