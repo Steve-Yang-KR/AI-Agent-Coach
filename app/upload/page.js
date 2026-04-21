@@ -1,8 +1,10 @@
-"use client";
+'use client';
 
 import { useState } from "react";
-import { storage } from "../../lib/firebase";
-import { ref, uploadBytes } from "firebase/storage";
+import { storage } from "@/lib/firebaseClient";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db } from "@/lib/firebase";
+import { addDoc, collection } from "firebase/firestore";
 
 export default function Upload() {
   const [file, setFile] = useState(null);
@@ -13,7 +15,16 @@ export default function Upload() {
     const storageRef = ref(storage, `videos/${file.name}`);
     await uploadBytes(storageRef, file);
 
-    alert("Uploaded!");
+    const url = await getDownloadURL(storageRef);
+
+    await addDoc(collection(db, "videos"), {
+      player_id: "player1",
+      video_url: url,
+      created_at: new Date(),
+      analyzed: false
+    });
+
+    alert("Uploaded & Analyzing...");
   };
 
   return (
